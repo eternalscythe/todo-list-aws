@@ -3,9 +3,9 @@
 source todo-list-aws/bin/activate
 set -x
 export BASE_URL=$1
-MODE=${2:-full}  # Si no se pasa, ejecuta todos los tests
-if [ "$MODE" == "readonly" ]; then
-    # Asumiendo que los tests de solo lectura tienen "list" o "get" en su nombre
+# Usar variable de entorno TEST_MODE (si no está definida, por defecto "full")
+TEST_MODE=${TEST_MODE:-full}
+if [ "$TEST_MODE" == "readonly" ]; then
     pytest -s test/integration/todoApiTest.py -k "list or get"
 else
     pytest -s test/integration/todoApiTest.py

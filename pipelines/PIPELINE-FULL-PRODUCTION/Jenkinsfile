@@ -20,18 +20,18 @@ pipeline {
              sh "bash pipelines/common-steps/deploy.sh production"
             }
         }
-        stage('Integration Test after deploy'){
-            steps{
-                script {
-                    def BASE_URL = sh( script: "aws cloudformation describe-stacks --stack-name todo-list-aws-production --query 'Stacks[0].Outputs[?OutputKey==`BaseUrlApi`].OutputValue' --region us-east-1 --output text",
-                        returnStdout: true)
-                    echo "$BASE_URL"
-                    echo 'Initiating Integration Tests'
-                    sh "bash pipelines/common-steps/integration.sh $BASE_URL readonly"
-                }
+        stage('Integration Test after deploy') {
+    steps {
+        script {
+            def BASE_URL = sh(script: "aws cloudformation describe-stacks --stack-name todo-list-aws-production --query 'Stacks[0].Outputs[?OutputKey==`BaseUrlApi`].OutputValue' --region us-east-1 --output text", returnStdout: true).trim()
+            echo "$BASE_URL"
+            echo 'Initiating Integration Tests (readonly)'
+            withEnv(['TEST_MODE=readonly']) {
+                sh "bash pipelines/common-steps/integration.sh $BASE_URL"
             }
         }
     }
+}
     post { 
         always { 
             echo 'Clean env: delete dir'
