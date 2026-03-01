@@ -13,6 +13,7 @@ pipeline {
                 stash name: 'source', includes: '**/*'
             }
         }
+<<<<<<< HEAD
         stage('Static Test') {
             agent { label 'static-test' }
             steps {
@@ -21,6 +22,25 @@ pipeline {
                     echo "Ejecutando en agente: $(hostname) - Usuario: $(whoami)"
                     source todo-list-aws/bin/activate || (echo "Creando virtualenv" && bash pipelines/PIPELINE-FULL-${ENVIRONMENT.toUpperCase()}/setup.sh)
                     bash pipelines/PIPELINE-FULL-${ENVIRONMENT.toUpperCase()}/static_test.sh
+=======
+       stage('Static Test') {
+            agent { label 'static-test' }
+            environment {
+                ENV_UPPER = "${params.ENVIRONMENT.toUpperCase()}"
+            }
+            steps {
+                script { unstash 'source' }
+                sh '''#!/bin/bash
+                    echo "Ejecutando en agente: $(hostname) - Usuario: $(whoami)"
+                    # Activar virtualenv o crearlo si no existe
+                    if [ -f todo-list-aws/bin/activate ]; then
+                        . todo-list-aws/bin/activate
+                    else
+                        echo "Creando virtualenv"
+                        bash pipelines/PIPELINE-FULL-${ENV_UPPER}/setup.sh
+                    fi
+                    bash pipelines/PIPELINE-FULL-${ENV_UPPER}/static_test.sh
+>>>>>>> develop
                 '''
             }
         }
@@ -50,7 +70,14 @@ pipeline {
                     unstash 'source'
                     unstash 'api-url'
                     def baseUrl = readFile('api_url.txt').trim()
+<<<<<<< HEAD
                     sh "bash pipelines/common-steps/integration.sh ${baseUrl} ${params.ENVIRONMENT == 'production' ? 'readonly' : 'full'}"
+=======
+                    sh '''#!/bin/bash
+                        . todo-list-aws/bin/activate
+                        bash pipelines/common-steps/integration.sh ''' + baseUrl + ''' ''' + (params.ENVIRONMENT == 'production' ? 'readonly' : 'full') + '''
+                    '''
+>>>>>>> develop
                 }
             }
         }
