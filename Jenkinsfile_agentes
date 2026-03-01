@@ -1,0 +1,77 @@
+pipeline {
+    agent none
+    parameters {
+        string(name: 'ENVIRONMENT', defaultValue: 'staging', description: 'staging o production')
+        string(name: 'BRANCH', defaultValue: 'develop', description: 'Rama a construir')
+    }
+    stages {
+        stage('Get Code') {
+            agent { label 'default' }
+            steps {
+                checkout scm
+                sh "git checkout ${params.BRANCH}"
+                stash name: 'source', includes: '**/*'
+            }
+        }
+        stage('Static Test') {
+            agent { label 'static-test' }
+            steps {
+                script { unstash 'source' }
+                sh '''
+                    echo "Ejecutando en agente: $(hostname) - Usuario: $(whoami)"
+                    source todo-list-aws/bin/activate || (echo "Creando virtualenv" && bash pipelines/PIPELINE-FULL-${ENVIRONMENT.toUpperCase()}/setup.sh)
+                    bash pipelines/PIPELINE-FULL-${ENVIRONMENT.toUpperCase()}/static_test.sh
+                '''
+            }
+        }
+        stage('Build') {
+            agent { label 'default' }
+            steps {
+                script { unstash 'source' }
+                sh "bash pipelines/common-steps/build.sh"
+            }
+        }
+        stage('Deploy') {
+            agent { label 'default' }
+            steps {
+                script { unstash 'source' }
+                sh "bash pipelines/common-steps/deploy.sh ${params.ENVIRONMENT}"
+                script {
+                    def baseUrl = sh(script: "aws cloudformation describe-stacks --stack-name todo-list-aws-${params.ENVIRONMENT} --query 'Stacks[0].Outputs[?OutputKey==`BaseUrlApi`].OutputValue' --region us-east-1 --output text", returnStdout: true).trim()
+                    writeFile file: 'api_url.txt', text: baseUrl
+                    stash name: 'api-url', includes: 'api_url.txt'
+                }
+            }
+        }
+        stage('Integration Test') {
+            agent { label 'integration-test' }
+            steps {
+                script {
+                    unstash 'source'
+                    unstash 'api-url'
+                    def baseUrl = readFile('api_url.txt').trim()
+                    sh "bash pipelines/common-steps/integration.sh ${baseUrl} ${params.ENVIRONMENT == 'production' ? 'readonly' : 'full'}"
+                }
+            }
+        }
+        stage('Promote') {
+            when { expression { params.ENVIRONMENT == 'staging' } }
+            agent { label 'default' }
+            steps {
+                script { unstash 'source' }
+                sh '''
+                    git config user.email "jenkins@example.com"
+                    git config user.name "Jenkins"
+                    git checkout master
+                    git merge develop --no-ff -m "Merge develop into master after successful CI [skip ci]"
+                    git push origin master
+                '''
+            }
+        }
+    }
+    post {
+        always {
+            cleanWs()
+        }
+    }
+}
