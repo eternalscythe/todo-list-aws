@@ -36,17 +36,16 @@ pipeline {
         stage('Deploy'){
             steps{
                 echo 'Initiating Deployment'
-                sh "bash pipelines/common-steps/deploy.sh"
+                sh "bash pipelines/common-steps/deploy.sh staging"
             }
         }
         stage('Integration Test after deploy'){
             steps{
-                script {
-                    def BASE_URL = sh( script: "aws cloudformation describe-stacks --stack-name todo-list-aws-staging --query 'Stacks[0].Outputs[?OutputKey==`BaseUrlApi`].OutputValue' --region us-east-1 --output text",
-                        returnStdout: true)
+              script {
+                    def BASE_URL = sh( script: "aws cloudformation describe-stacks --stack-name todo-list-aws-production --query 'Stacks[0].Outputs[?OutputKey==`BaseUrlApi`].OutputValue' --region us-east-1 --output text", returnStdout: true).trim()
                     echo "$BASE_URL"
-                    echo 'Initiating Integration Tests'
-                    sh "bash pipelines/common-steps/integration.sh $BASE_URL"
+                    echo 'Initiating Integration Tests (readonly)'
+                    sh "bash pipelines/common-steps/integration.sh $BASE_URL readonly"
                 }
                    
             }
