@@ -5,11 +5,17 @@ pipeline {
         string(name: 'BRANCH', defaultValue: 'develop', description: 'Rama a construir')
     }
     stages {
-        stage('Get Code') {
-            agent { label 'default' }
+      stage('Get Code') {
+        agent { label 'default' }
             steps {
                 checkout scm
                 sh "git checkout ${params.BRANCH}"
+                script {
+                    // Determinar la rama del repositorio de configuración según el entorno
+                    def configBranch = (params.ENVIRONMENT == 'staging') ? 'staging' : 'production'
+                    // Descargar el archivo samconfig.toml (repositorio público)
+                    sh "curl -s -o samconfig.toml https://raw.githubusercontent.com/eternalscythe/todo-list-aws-config/${configBranch}/samconfig.toml"
+                }
                 stash name: 'source', includes: '**/*'
             }
         }
