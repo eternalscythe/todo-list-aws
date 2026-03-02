@@ -82,19 +82,19 @@ pipeline {
             agent { label 'default' }
             steps {
                 script { unstash 'source' }
-                sh '''
-                    git config user.email "jenkins@example.com"
-                    git config user.name "Jenkins"
-                    # Descartar cambios locales (por si acaso)
-                    git reset --hard HEAD
-                    git checkout master
-                    git pull origin master
-                    git merge develop --no-ff -m "Merge develop into master after successful CI [skip ci]"
-                    git push origin master
-                '''
+                withCredentials([usernamePassword(credentialsId: 'github-token', passwordVariable: 'GITHUB_TOKEN', usernameVariable: 'GITHUB_USER')]) {
+                    sh '''
+                        git config user.email "jenkins@example.com"
+                        git config user.name "Jenkins"
+                        git reset --hard HEAD
+                        git checkout master
+                        git pull origin master
+                        git merge develop --no-ff -m "Merge develop into master after successful CI [skip ci]"
+                        git push https://${GITHUB_TOKEN}@github.com/eternalscythe/todo-list-aws.git master
+                    '''
+                }
             }
         }
-    }
     post {
         always {
             cleanWs()
