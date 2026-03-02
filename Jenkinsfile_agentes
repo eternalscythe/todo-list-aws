@@ -77,12 +77,14 @@ pipeline {
                 }
             }
         }
-       stage('Promote') {
+        stage('Promote') {
             when { expression { params.ENVIRONMENT == 'staging' } }
             agent { label 'default' }
             steps {
                 script { unstash 'source' }
-                withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
+                withCredentials([usernamePassword(credentialsId: 'github-token',
+                                                  passwordVariable: 'GITHUB_TOKEN',
+                                                  usernameVariable: 'GITHUB_USER')]) {
                     sh '''
                         git config user.email "jenkins@example.com"
                         git config user.name "Jenkins"
@@ -90,7 +92,7 @@ pipeline {
                         git checkout master
                         git pull origin master
                         git merge develop --no-ff -m "Merge develop into master after successful CI [skip ci]"
-                        git push https://${GITHUB_TOKEN}@github.com/eternalscythe/todo-list-aws.git master
+                        git push https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/eternalscythe/todo-list-aws.git master
                     '''
                 }
             }
@@ -98,7 +100,7 @@ pipeline {
     }
     post {
         always {
-            cleanWs()
+            echo 'Pipeline finished'   // Eliminamos cleanWs
         }
     }
 }
